@@ -12,8 +12,8 @@ import { useCrash } from "@lichtblick/hooks";
 import { ForwardedAnalytics } from "@lichtblick/suite-base/components/ForwardAnalyticsContextProvider";
 import { BuiltinPanelExtensionContext } from "@lichtblick/suite-base/components/PanelExtensionAdapter";
 import { SceneExtensionConfigType } from "@lichtblick/suite-base/context/AppContext";
-import { FollowMode, TestOptions } from "@lichtblick/suite-base/panels/ThreeDeeRender/IRenderer";
-import { CameraState } from "@lichtblick/suite-base/panels/ThreeDeeRender/camera";
+import { FollowMode, TestOptions } from "@lichtblick/suite-base/panels/ThreeDeeRender_custom/IRenderer";
+import { CameraState } from "@lichtblick/suite-base/panels/ThreeDeeRender_custom/camera";
 
 export type InterfaceMode = "3d" | "image";
 

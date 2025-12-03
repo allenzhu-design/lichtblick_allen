@@ -26,7 +26,7 @@ import { useExtensionCatalog } from "@lichtblick/suite-base/context/ExtensionCat
 import { createSyncRoot } from "@lichtblick/suite-base/panels/createSyncRoot";
 import { SaveConfig } from "@lichtblick/suite-base/types/panels";
 
-import { ThreeDeeRender } from "./ThreeDeeRender";
+import { ThreeDeeRender_custom } from "./ThreeDeeRender_custom";
 import { InitPanelArgs, InterfaceMode } from "./types";
 
 function initPanel(args: InitPanelArgs, context: BuiltinPanelExtensionContext) {
@@ -43,7 +43,7 @@ function initPanel(args: InitPanelArgs, context: BuiltinPanelExtensionContext) {
   return createSyncRoot(
     <CaptureErrorBoundary onError={crash}>
       <ForwardAnalyticsContextProvider forwardedAnalytics={forwardedAnalytics}>
-        <ThreeDeeRender
+        <ThreeDeeRender_custom
           context={context}
           interfaceMode={interfaceMode}
           testOptions={testOptions}
@@ -134,14 +134,14 @@ function ThreeDeeRenderAdapter(interfaceMode: InterfaceMode, props: Props) {
  */
 export const ImagePanel = Panel<Record<string, unknown>, Props>(
   Object.assign(ThreeDeeRenderAdapter.bind(undefined, "image"), {
-    panelType: "Image",
+    panelType: "Image_custom",
     defaultConfig: {},
   }),
 );
 
 export default Panel(
   Object.assign(ThreeDeeRenderAdapter.bind(undefined, "3d"), {
-    panelType: "3D",
+    panelType: "3D_custom",
     defaultConfig: {},
   }),
 );

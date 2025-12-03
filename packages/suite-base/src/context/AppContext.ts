@@ -13,7 +13,6 @@ import { Immutable, SettingsTreeField, SettingsTreeNode } from "@lichtblick/suit
 import { AppBarMenuItem } from "@lichtblick/suite-base/components/AppBar/types";
 import { LayoutData } from "@lichtblick/suite-base/context/CurrentLayoutContext";
 import { WorkspaceContextStore } from "@lichtblick/suite-base/context/Workspace/WorkspaceContext";
-import type { SceneExtensionConfig } from "@lichtblick/suite-base/panels/ThreeDeeRender/SceneExtensionConfig";
 import type { Player } from "@lichtblick/suite-base/players/types";
 
 interface IAppContext {
@@ -47,9 +46,37 @@ export const INJECTED_FEATURE_KEYS = {
   customSceneExtensions: "ThreeDeeRender.customSceneExtensions",
 } as const;
 
+/**
+ * Generic scene extension configuration that works with both ThreeDeeRender and ThreeDeeRender_custom.
+ * Uses a flexible type structure to avoid version-specific type conflicts.
+ */
+export type SceneExtensionConfigType = {
+  reserved?: {
+    imageMode?: {
+      init?: (renderer: unknown) => unknown;
+      supportedInterfaceModes?: string[];
+    };
+    measurementTool?: {
+      init?: (renderer: unknown) => unknown;
+      supportedInterfaceModes?: string[];
+    };
+    publishClickTool?: {
+      init?: (renderer: unknown) => unknown;
+      supportedInterfaceModes?: string[];
+    };
+  };
+  extensionsById?: Record<
+    string,
+    {
+      init?: (renderer: unknown) => unknown;
+      supportedInterfaceModes?: string[];
+    }
+  >;
+};
+
 export type InjectedFeatureMap = {
   [INJECTED_FEATURE_KEYS.customSceneExtensions]?: {
-    customSceneExtensions: DeepPartial<SceneExtensionConfig>;
+    customSceneExtensions: DeepPartial<SceneExtensionConfigType>;
   };
 };
 

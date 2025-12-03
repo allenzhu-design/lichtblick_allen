@@ -28,6 +28,7 @@ import tabThumbnail from "./Tab/thumbnail.png";
 import tableThumbnail from "./Table/thumbnail.png";
 import teleopThumbnail from "./Teleop/thumbnail.png";
 import threeDeeRenderThumbnail from "./ThreeDeeRender/thumbnail.png";
+import threeDeeRenderCustomThumbnail from "./ThreeDeeRender_custom/thumbnail.png";
 import topicGraphThumbnail from "./TopicGraph/thumbnail.png";
 import userScriptEditorThumbnail from "./UserScriptEditor/thumbnail.png";
 import variableSliderThumbnail from "./VariableSlider/thumbnail.png";
@@ -39,6 +40,13 @@ export const getBuiltin: (t: TFunction<"panels">) => PanelInfo[] = (t) => [
     description: t("3DPanelDescription"),
     thumbnail: threeDeeRenderThumbnail,
     module: async () => await import("./ThreeDeeRender"),
+  },
+  {
+    title: t("3D"),
+    type: "3D_custom",
+    description: t("3DPanelDescription") + " (Custom)",
+    thumbnail: threeDeeRenderCustomThumbnail,
+    module: async () => await import("./ThreeDeeRender_custom"),
   },
   {
     title: t("ROSDiagnosticsDetail"),
@@ -62,6 +70,13 @@ export const getBuiltin: (t: TFunction<"panels">) => PanelInfo[] = (t) => [
     description: t("imageDescription"),
     thumbnail: imageThumbnail,
     module: async () => await import("./Image"),
+  },
+  {
+    title: t("image") + " (Custom)",
+    type: "Image_custom",
+    description: t("imageDescription") + " (Custom)",
+    thumbnail: imageThumbnail,
+    module: async () => await import("./ThreeDeeRender_custom"),
   },
   {
     title: t("indicator"),
