@@ -1,0 +1,34 @@
+/* SPDX-FileCopyrightText: Copyright (C) 2023-2025 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com> */
+/* SPDX-License-Identifier: MPL-2.0 */
+
+/* This Source Code Form is subject to the terms of the Mozilla Public License, v2.0. If a copy of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/ */
+
+/**
+ * SVG 矩形选择工具样式
+ * 参考 SuperSplat (src/ui/scss/tool.scss) 的设计
+ */
+
+.foxglove-tool-svg {
+  display: inline;
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+}
+
+.foxglove-tool-svg.hidden {
+  display: none;
+}
+
+/* 矩形选择框样式 */
+#foxglove-rect-select-svg {
+  pointer-events: none;
+}
+
+#foxglove-rect-select-svg > rect {
+  fill: none;
+  stroke: #ff6600; /* 橙红色 */
+  stroke-width: 1;
+  stroke-dasharray: 5, 5; /* 虚线：5px实线 + 5px空白 */
+}

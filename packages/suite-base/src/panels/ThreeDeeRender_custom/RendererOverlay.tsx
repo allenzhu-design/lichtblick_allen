@@ -103,8 +103,10 @@ type Props = {
   enableStats: boolean;
   interfaceMode: InterfaceMode;
   measureActive: boolean;
+  selectionActive: boolean;
   onChangePublishClickType: (_: PublishClickType) => void;
   onClickMeasure: () => void;
+  onClickSelection: () => void;
   onClickPublish: () => void;
   onShowTopicSettings: (topic: string) => void;
   onTogglePerspective: () => void;
@@ -321,6 +323,7 @@ export function RendererOverlay(props: Props): React.JSX.Element {
 
   const mousePresenceRef = useRef<HTMLDivElement>(ReactNull);
   const mousePresent = usePanelMousePresence(mousePresenceRef);
+  const isSelectionDisabled = props.perspective === true || props.interfaceMode !== "3d";
 
   return (
     <>
@@ -375,7 +378,31 @@ export function RendererOverlay(props: Props): React.JSX.Element {
                 </div>
               </IconButton>
             </Tooltip>
-
+            {/* 新增：框选按钮 */}
+            <Tooltip
+              placement="left"
+              title={
+                isSelectionDisabled
+                  ? "框选功能仅在2D模式下可用"
+                  : props.selectionActive
+                  ? "取消框选"
+                  : "框选对象"
+              }
+            >
+              <span> {/* 包裹层用于在禁用时显示Tooltip */}
+                <IconButton
+                  className={classes.iconButton}
+                  size="small"
+                  color={props.selectionActive ? "info" : "inherit"}
+                  onClick={props.onClickSelection}
+                  disabled={isSelectionDisabled} // 关键：根据模式禁用
+                  data-testid="selection-button"
+                >
+                  {/* 需要一个框选图标，这里用方框图标示例，你需要替换为合适的图标库组件 */}
+                  <div style={{ width: 20, height: 20, border: '1.5px solid currentColor' }} />
+                </IconButton>
+              </span>
+            </Tooltip>
             {publishControls}
           </Paper>
         )}

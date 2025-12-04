@@ -74,6 +74,7 @@ import {
 import { CameraStateSettings } from "./renderables/CameraStateSettings";
 import { ImageMode } from "./renderables/ImageMode/ImageMode";
 import { MeasurementTool } from "./renderables/MeasurementTool";
+import { SelectionTool } from "./renderables/SelectionTool";
 import { PublishClickTool } from "./renderables/PublishClickTool";
 import { MarkerPool } from "./renderables/markers/MarkerPool";
 import {
@@ -204,6 +205,7 @@ export class Renderer extends EventEmitter<RendererEvents> implements IRenderer 
   #imageModeExtension?: ImageMode;
 
   public measurementTool: MeasurementTool;
+  public selectionTool: SelectionTool;
   public publishClickTool: PublishClickTool;
 
   // Are we connected to a ROS data source? Normalize coordinate frames if so by
@@ -354,8 +356,10 @@ export class Renderer extends EventEmitter<RendererEvents> implements IRenderer 
     const { reserved } = args.sceneExtensionConfig;
 
     this.measurementTool = reserved.measurementTool.init(this);
+    this.selectionTool = reserved.selectionTool.init(this);
     this.publishClickTool = reserved.publishClickTool.init(this);
     this.#addSceneExtension(this.measurementTool);
+    this.#addSceneExtension(this.selectionTool);
     this.#addSceneExtension(this.publishClickTool);
 
     const aspect = renderSize.width / renderSize.height;
@@ -1265,7 +1269,7 @@ export class Renderer extends EventEmitter<RendererEvents> implements IRenderer 
     }
 
     // Disable picking while a tool is active
-    if (this.measurementTool.state !== "idle" || this.publishClickTool.state !== "idle") {
+    if (this.measurementTool.state !== "idle" || this.selectionTool.state !== "idle" || this.publishClickTool.state !== "idle") {
       return;
     }
 

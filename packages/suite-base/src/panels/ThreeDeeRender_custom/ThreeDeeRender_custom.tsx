@@ -643,6 +643,28 @@ export function ThreeDeeRender_custom(props: Readonly<ThreeDeeRenderProps>): Rea
     }
   }, [measureActive, renderer]);
 
+  const [selectionActive, setSelectionActive] = useState(false);
+  useEffect(() => {
+    const onStart = () => { setSelectionActive(true); };
+    const onEnd = () => { setSelectionActive(false); };
+    renderer?.selectionTool?.addEventListener('foxglove.selection-start', onStart);
+    renderer?.selectionTool?.addEventListener('foxglove.selection-end', onEnd);
+    return () => {
+      renderer?.selectionTool?.removeEventListener('foxglove.selection-start', onStart);
+      renderer?.selectionTool?.removeEventListener('foxglove.selection-end', onEnd);
+    };
+  }, [renderer?.selectionTool]);
+
+  const onClickSelection = useCallback(() => {
+    if (selectionActive) {
+      renderer?.selectionTool?.stopSelecting();
+    } else {
+      renderer?.selectionTool?.startSelecting();
+      renderer?.measurementTool.stopMeasuring(); // 通常与测量互斥
+      renderer?.publishClickTool.stop(); // 通常与发布互斥
+    }
+  }, [selectionActive, renderer]);
+
   const [publishActive, setPublishActive] = useState(false);
   useEffect(() => {
     if (renderer?.publishClickTool.publishClickType !== config.publish.type) {
@@ -790,7 +812,7 @@ export function ThreeDeeRender_custom(props: Readonly<ThreeDeeRenderProps>): Rea
             position: "absolute",
             top: 0,
             left: 0,
-            ...((measureActive || publishActive) && { cursor: "crosshair" }),
+            ...((measureActive || publishActive || selectionActive) && { cursor: "crosshair" }),
           }}
         />
         <RendererContext.Provider value={renderer}>
@@ -803,6 +825,8 @@ export function ThreeDeeRender_custom(props: Readonly<ThreeDeeRenderProps>): Rea
             onTogglePerspective={onTogglePerspective}
             measureActive={measureActive}
             onClickMeasure={onClickMeasure}
+            selectionActive={selectionActive}
+            onClickSelection={onClickSelection}
             canPublish={canPublish}
             publishActive={publishActive}
             onClickPublish={onClickPublish}

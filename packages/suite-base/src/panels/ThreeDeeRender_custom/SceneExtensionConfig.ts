@@ -27,6 +27,7 @@ import { VelodyneScans } from "@lichtblick/suite-base/panels/ThreeDeeRender_cust
 import { IRenderer } from "./IRenderer";
 import { SceneExtension } from "./SceneExtension";
 import { MeasurementTool } from "./renderables/MeasurementTool";
+import { SelectionTool } from "./renderables/SelectionTool";
 import { PublishClickTool } from "./renderables/PublishClickTool";
 import { InterfaceMode } from "./types";
 
@@ -39,6 +40,7 @@ export type SceneExtensionConfig = {
 export type ReservedSceneExtensionConfig = {
   imageMode: ExtensionOverride<ImageMode>;
   measurementTool: ExtensionOverride<MeasurementTool>;
+  selectionTool: ExtensionOverride<SelectionTool>;
   publishClickTool: ExtensionOverride<PublishClickTool>;
 };
 
@@ -55,6 +57,9 @@ export const DEFAULT_SCENE_EXTENSION_CONFIG: SceneExtensionConfig = {
     },
     measurementTool: {
       init: (renderer: IRenderer) => new MeasurementTool(renderer),
+    },
+    selectionTool: {
+      init: (renderer: IRenderer) => new SelectionTool(renderer),
     },
     publishClickTool: {
       init: (renderer: IRenderer) => new PublishClickTool(renderer),
