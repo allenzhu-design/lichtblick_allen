@@ -12,11 +12,13 @@ import { PickedRenderable } from "../Picker";
 import { Renderable } from "../Renderable";
 import { SceneExtension } from "../SceneExtension";
 
+type SelectionMode = "inactive" | "active";
 type SelectionState = "idle" | "dragging";
 
 interface SelectionToolEventMap extends THREE.Object3DEventMap {
   "foxglove.selection-start": object;
   "foxglove.selection-end": { selectedObjects: PickedRenderable[] };
+  "foxglove.selection-mode-changed": { mode: SelectionMode };
 }
 
 /**
@@ -38,6 +40,18 @@ const SELECTION_RECT_CONFIG = {
  * SVG 矩形选择工具
  * 采用 SVG 方式绘制选择框，参考 SuperSplat 的 RectSelection 实现
  * 
+ * 模式设计（参考 SuperSplat）：
+ * - inactive（未激活）：工具未激活，不响应鼠标
+ * - active（已激活）：工具已激活，UI 高亮，可多次框选
+ * 
+ * 每次框选后：
+ * 1. 虚线框显示
+ * 2. 执行对象选择
+ * 3. 虚线框消失（200ms 延迟）
+ * 4. 保持 active 状态，等待下一次框选
+ * 
+ * 再次点击 UI 可切换回 inactive 状态
+ * 
  * 相比 ShaderMaterial 方案的优势：
  * - 更简洁可靠，无需复杂的着色器
  * - 性能更好，不占用 GPU 资源
@@ -47,6 +61,7 @@ const SELECTION_RECT_CONFIG = {
 export class SelectionTool extends SceneExtension<Renderable, SelectionToolEventMap> {
   public static extensionId = "foxglove.SelectionTool";
 
+  private selectionMode: SelectionMode = "inactive";
   private selectionState: SelectionState = "idle";
   private startPoint = { x: 0, y: 0 };
   private endPoint = { x: 0, y: 0 };
@@ -66,27 +81,59 @@ export class SelectionTool extends SceneExtension<Renderable, SelectionToolEvent
     // 初始化 SVG 容器
     this.#initSVGContainer();
 
-    this.#setState("idle");
+    this.#setMode("inactive");
   }
 
   public override dispose(): void {
     this.#removeSVGContainer();
-    this.renderer.input.removeListener("mousedown", this.#handleMouseDown);
-    this.renderer.input.removeListener("mousemove", this.#handleMouseMove);
-    this.renderer.input.removeListener("mouseup", this.#handleMouseUp);
+    if (this.selectionMode === "active") {
+      this.#removeEventListeners();
+    }
     super.dispose();
   }
 
-  public startSelecting(): void {
-    this.#setState("dragging");
+  /**
+   * 切换工具模式
+   * 
+   * inactive ↔ active 切换
+   * - 点击 UI 按钮时调用此方法
+   * - 自动切换高亮状态和事件监听
+   * 
+   * 参考 SuperSplat 的 ToolManager.activate() 行为：
+   * re-activating the currently active tool deactivates it
+   */
+  public toggleMode(): void {
+    if (this.selectionMode === "inactive") {
+      this.#setMode("active");
+    } else {
+      this.#setMode("inactive");
+    }
   }
 
-  public stopSelecting(): void {
-    this.#setState("idle");
+  public get mode(): SelectionMode {
+    return this.selectionMode;
   }
 
   public get state(): SelectionState {
     return this.selectionState;
+  }
+
+  /**
+   * 向后兼容：startSelecting() 等同于切换到 active
+   */
+  public startSelecting(): void {
+    if (this.selectionMode === "inactive") {
+      this.toggleMode();
+    }
+  }
+
+  /**
+   * 向后兼容：stopSelecting() 等同于切换到 inactive
+   */
+  public stopSelecting(): void {
+    if (this.selectionMode === "active") {
+      this.toggleMode();
+    }
   }
 
   /**
@@ -178,37 +225,64 @@ export class SelectionTool extends SceneExtension<Renderable, SelectionToolEvent
     }
   }
 
-  #setState(state: SelectionState): void {
-    if (this.selectionState === state) {
+  /**
+   * 添加事件监听器（激活模式时调用）
+   */
+  #addEventListeners(): void {
+    this.renderer.input.addListener("mousedown", this.#handleMouseDown);
+    this.renderer.input.addListener("mousemove", this.#handleMouseMove);
+    this.renderer.input.addListener("mouseup", this.#handleMouseUp);
+  }
+
+  /**
+   * 移除事件监听器（停用模式时调用）
+   */
+  #removeEventListeners(): void {
+    this.renderer.input.removeListener("mousedown", this.#handleMouseDown);
+    this.renderer.input.removeListener("mousemove", this.#handleMouseMove);
+    this.renderer.input.removeListener("mouseup", this.#handleMouseUp);
+  }
+
+  /**
+   * 设置工具模式
+   */
+  #setMode(mode: SelectionMode): void {
+    if (this.selectionMode === mode) {
       return;
     }
 
-    this.selectionState = state;
-    switch (state) {
-      case "idle":
-        this.renderer.input.removeListener("mousedown", this.#handleMouseDown);
-        this.renderer.input.removeListener("mousemove", this.#handleMouseMove);
-        this.renderer.input.removeListener("mouseup", this.#handleMouseUp);
-        this.#hideSelectionRect();
+    this.selectionMode = mode;
+
+    switch (mode) {
+      case "inactive":
+        // 清理状态
         this.isMouseDown = false;
+        this.#hideSelectionRect();
+        this.#removeEventListeners();
+
         // 恢复鼠标指针
         if (this.canvasElement) {
           this.canvasElement.style.cursor = "auto";
         }
-        this.dispatchEvent({ type: "foxglove.selection-end", selectedObjects: [] });
+
+        // 触发模式变更事件
+        this.dispatchEvent({ type: "foxglove.selection-mode-changed", mode: "inactive" });
         break;
 
-      case "dragging":
-        this.renderer.input.addListener("mousedown", this.#handleMouseDown);
-        this.renderer.input.addListener("mousemove", this.#handleMouseMove);
-        this.renderer.input.addListener("mouseup", this.#handleMouseUp);
+      case "active":
         // 设置鼠标指针为十字
         if (this.canvasElement) {
           this.canvasElement.style.cursor = "crosshair";
         }
-        this.dispatchEvent({ type: "foxglove.selection-start" });
+
+        // 添加事件监听
+        this.#addEventListeners();
+
+        // 触发模式变更事件
+        this.dispatchEvent({ type: "foxglove.selection-mode-changed", mode: "active" });
         break;
     }
+
     this.renderer.queueAnimationFrame();
   }
 
@@ -217,8 +291,8 @@ export class SelectionTool extends SceneExtension<Renderable, SelectionToolEvent
     _worldSpaceCursorCoords: THREE.Vector3 | undefined,
     event: MouseEvent,
   ) => {
-    // 仅在左键按下时开始拖拽
-    if (event.button !== 0) {
+    // 仅在工具激活且左键按下时开始拖拽
+    if (this.selectionMode !== "active" || event.button !== 0) {
       return;
     }
 
@@ -227,11 +301,13 @@ export class SelectionTool extends SceneExtension<Renderable, SelectionToolEvent
     this.endPoint.x = cursorCoords.x;
     this.endPoint.y = cursorCoords.y;
     this.isMouseDown = true;
+    this.selectionState = "dragging";
 
     // 显示并更新矩形
     this.#showSelectionRect();
     this.#updateSelectionRect();
 
+    this.dispatchEvent({ type: "foxglove.selection-start" });
     this.renderer.queueAnimationFrame();
   };
 
@@ -257,14 +333,15 @@ export class SelectionTool extends SceneExtension<Renderable, SelectionToolEvent
     _worldSpaceCursorCoords: THREE.Vector3 | undefined,
     event: MouseEvent,
   ) => {
-    // 仅在左键释放时结束选择
-    if (event.button !== 0 || !this.isMouseDown) {
+    // 仅在左键释放时结束拖拽
+    if (event.button !== 0 || !this.isMouseDown || this.selectionState !== "dragging") {
       return;
     }
 
     this.endPoint.x = cursorCoords.x;
     this.endPoint.y = cursorCoords.y;
     this.isMouseDown = false;
+    this.selectionState = "idle";
 
     // 计算矩形尺寸
     const width = Math.abs(this.endPoint.x - this.startPoint.x);
@@ -282,12 +359,10 @@ export class SelectionTool extends SceneExtension<Renderable, SelectionToolEvent
       });
     }
 
-    // 短暂显示后隐藏矩形，然后恢复待机状态
-    setTimeout(() => {
-      this.#hideSelectionRect();
-      this.#setState("idle");
-      this.renderer.queueAnimationFrame();
-    }, 200);
+    // 立即隐藏矩形（无延迟）
+    // 关键：不改变 selectionMode，保持 active 状态
+    // 用户可以继续框选，无需再次点击 UI 按钮
+    this.#hideSelectionRect();
 
     this.renderer.queueAnimationFrame();
   };

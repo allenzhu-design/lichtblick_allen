@@ -645,25 +645,25 @@ export function ThreeDeeRender_custom(props: Readonly<ThreeDeeRenderProps>): Rea
 
   const [selectionActive, setSelectionActive] = useState(false);
   useEffect(() => {
-    const onStart = () => { setSelectionActive(true); };
-    const onEnd = () => { setSelectionActive(false); };
-    renderer?.selectionTool?.addEventListener('foxglove.selection-start', onStart);
-    renderer?.selectionTool?.addEventListener('foxglove.selection-end', onEnd);
+    // 监听模式变更事件，实时更新高亮状态
+    const onModeChanged = (event: any) => {
+      setSelectionActive(event.mode === "active");
+    };
+    renderer?.selectionTool?.addEventListener('foxglove.selection-mode-changed', onModeChanged);
     return () => {
-      renderer?.selectionTool?.removeEventListener('foxglove.selection-start', onStart);
-      renderer?.selectionTool?.removeEventListener('foxglove.selection-end', onEnd);
+      renderer?.selectionTool?.removeEventListener('foxglove.selection-mode-changed', onModeChanged);
     };
   }, [renderer?.selectionTool]);
 
   const onClickSelection = useCallback(() => {
-    if (selectionActive) {
-      renderer?.selectionTool?.stopSelecting();
-    } else {
-      renderer?.selectionTool?.startSelecting();
-      renderer?.measurementTool.stopMeasuring(); // 通常与测量互斥
-      renderer?.publishClickTool.stop(); // 通常与发布互斥
-    }
-  }, [selectionActive, renderer]);
+    // 调用 toggleMode() 来切换激活/停用状态
+    // 参考 SuperSplat 的工具管理器：重新点击激活的工具会停用它
+    renderer?.selectionTool?.toggleMode();
+    
+    // 停用其他工具
+    renderer?.measurementTool.stopMeasuring();
+    renderer?.publishClickTool.stop();
+  }, [renderer]);
 
   const [publishActive, setPublishActive] = useState(false);
   useEffect(() => {
