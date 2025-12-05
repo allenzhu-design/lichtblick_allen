@@ -11,6 +11,7 @@ import type { IRenderer } from "../IRenderer";
 import { PickedRenderable } from "../Picker";
 import { Renderable } from "../Renderable";
 import { SceneExtension } from "../SceneExtension";
+import "./SelectionTool.css";
 
 type SelectionMode = "inactive" | "active";
 type SelectionState = "idle" | "dragging";
@@ -39,19 +40,19 @@ const SELECTION_RECT_CONFIG = {
 /**
  * SVG 矩形选择工具
  * 采用 SVG 方式绘制选择框，参考 SuperSplat 的 RectSelection 实现
- * 
+ *
  * 模式设计（参考 SuperSplat）：
  * - inactive（未激活）：工具未激活，不响应鼠标
  * - active（已激活）：工具已激活，UI 高亮，可多次框选
- * 
+ *
  * 每次框选后：
  * 1. 虚线框显示
  * 2. 执行对象选择
  * 3. 虚线框消失（200ms 延迟）
  * 4. 保持 active 状态，等待下一次框选
- * 
+ *
  * 再次点击 UI 可切换回 inactive 状态
- * 
+ *
  * 相比 ShaderMaterial 方案的优势：
  * - 更简洁可靠，无需复杂的着色器
  * - 性能更好，不占用 GPU 资源
@@ -94,11 +95,11 @@ export class SelectionTool extends SceneExtension<Renderable, SelectionToolEvent
 
   /**
    * 切换工具模式
-   * 
+   *
    * inactive ↔ active 切换
    * - 点击 UI 按钮时调用此方法
    * - 自动切换高亮状态和事件监听
-   * 
+   *
    * 参考 SuperSplat 的 ToolManager.activate() 行为：
    * re-activating the currently active tool deactivates it
    */
@@ -149,12 +150,15 @@ export class SelectionTool extends SceneExtension<Renderable, SelectionToolEvent
     this.svgContainer = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     this.svgContainer.setAttribute("id", "foxglove-rect-select-svg");
     this.svgContainer.setAttribute("class", "foxglove-tool-svg hidden");
+    // 设置内联样式，但不设置 display（由 CSS 类控制）
     this.svgContainer.style.position = "absolute";
     this.svgContainer.style.top = "0";
     this.svgContainer.style.left = "0";
     this.svgContainer.style.width = "100%";
     this.svgContainer.style.height = "100%";
     this.svgContainer.style.pointerEvents = "none";
+    // 初始状态：隐藏
+    this.svgContainer.style.display = "none";
 
     // 创建矩形元素
     const rectElement = document.createElementNS(
@@ -213,6 +217,8 @@ export class SelectionTool extends SceneExtension<Renderable, SelectionToolEvent
   #showSelectionRect(): void {
     if (this.svgContainer) {
       this.svgContainer.classList.remove("hidden");
+      // 确保显示
+      this.svgContainer.style.display = "";
     }
   }
 
@@ -222,6 +228,8 @@ export class SelectionTool extends SceneExtension<Renderable, SelectionToolEvent
   #hideSelectionRect(): void {
     if (this.svgContainer) {
       this.svgContainer.classList.add("hidden");
+      // 强制隐藏
+      this.svgContainer.style.display = "none";
     }
   }
 

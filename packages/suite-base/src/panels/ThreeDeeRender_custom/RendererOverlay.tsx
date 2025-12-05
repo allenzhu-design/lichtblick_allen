@@ -35,6 +35,7 @@ import { usePanelMousePresence } from "@lichtblick/suite-base/hooks/usePanelMous
 import { HUD } from "@lichtblick/suite-base/panels/ThreeDeeRender_custom/HUD";
 import { customTypography } from "@lichtblick/theme";
 
+import selectPickerIcon from "./renderables/select-picker-icon.png";
 import { InteractionContextMenu, Interactions, SelectionObject, TabType } from "./Interactions";
 import type { PickedRenderable } from "./Picker";
 import { Renderable } from "./Renderable";
@@ -398,8 +399,16 @@ export function RendererOverlay(props: Props): React.JSX.Element {
                   disabled={isSelectionDisabled} // 关键：根据模式禁用
                   data-testid="selection-button"
                 >
-                  {/* 需要一个框选图标，这里用方框图标示例，你需要替换为合适的图标库组件 */}
-                  <div style={{ width: 20, height: 20, border: '1.5px solid currentColor' }} />
+                  <img
+                    src={selectPickerIcon}
+                    alt="Select"
+                    style={{
+                      width: 20,
+                      height: 20,
+                      opacity: props.selectionActive ? 1 : 0.7,
+                      filter: props.selectionActive ? "brightness(0) saturate(100%) invert(48%) sepia(79%) saturate(1194%) hue-rotate(188deg) brightness(104%) contrast(101%)" : "none",
+                    }}
+                  />
                 </IconButton>
               </span>
             </Tooltip>
