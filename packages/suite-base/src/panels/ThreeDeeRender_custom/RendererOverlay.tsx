@@ -36,6 +36,7 @@ import { HUD } from "@lichtblick/suite-base/panels/ThreeDeeRender_custom/HUD";
 import { customTypography } from "@lichtblick/theme";
 
 import selectPickerIcon from "./renderables/select-picker-icon.png";
+import { FilterPanel, FilterValues } from "./FilterPanel";
 import { InteractionContextMenu, Interactions, SelectionObject, TabType } from "./Interactions";
 import type { PickedRenderable } from "./Picker";
 import { Renderable } from "./Renderable";
@@ -95,6 +96,11 @@ const useStyles = makeStyles()((theme) => ({
     borderRadius: theme.shape.borderRadius,
     marginLeft: theme.spacing(1),
   },
+  filterIcon: {
+    width: 20,
+    height: 20,
+    opacity: 0.7,
+  },
 }));
 
 type Props = {
@@ -109,6 +115,7 @@ type Props = {
   onClickMeasure: () => void;
   onClickSelection: () => void;
   onClickPublish: () => void;
+  onClickFilter?: () => void;
   onShowTopicSettings: (topic: string) => void;
   onTogglePerspective: () => void;
   perspective: boolean;
@@ -132,6 +139,7 @@ export function RendererOverlay(props: Props): React.JSX.Element {
     undefined,
   );
   const [interactionsTabType, setInteractionsTabType] = useState<TabType | undefined>(undefined);
+  const [filterPanelVisible, setFilterPanelVisible] = useState(false);
   const renderer = useRenderer();
 
   // Toggle object selection mode on/off in the renderer
@@ -158,6 +166,16 @@ export function RendererOverlay(props: Props): React.JSX.Element {
   const onResetView = useCallback(() => {
     renderer?.resetView();
   }, [renderer]);
+
+  const handleFilterChange = useCallback((filters: FilterValues) => {
+    // Store filter values when they change - can be used for backend operations
+    console.log("Filter values changed:", filters);
+  }, []);
+
+  const handleClickFilter = useCallback(() => {
+    setFilterPanelVisible((prev) => !prev);
+    props.onClickFilter?.();
+  }, [props]);
 
   const stats = props.enableStats ? (
     <div id="stats" style={{ position: "absolute", top: "10px", left: "10px" }}>
@@ -412,10 +430,37 @@ export function RendererOverlay(props: Props): React.JSX.Element {
                 </IconButton>
               </span>
             </Tooltip>
+            {/* 筛选按钮 */}
+            <Tooltip
+              placement="left"
+              title={filterPanelVisible ? "关闭筛选" : "打开筛选"}
+            >
+              <IconButton
+                className={classes.iconButton}
+                size="small"
+                color={filterPanelVisible ? "info" : "inherit"}
+                onClick={handleClickFilter}
+                data-testid="filter-button"
+              >
+                <span
+                  style={{
+                    width: 20,
+                    height: 20,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "16px",
+                  }}
+                >
+                  ⚙️
+                </span>
+              </IconButton>
+            </Tooltip>
             {publishControls}
           </Paper>
         )}
       </div>
+      <FilterPanel visible={filterPanelVisible} onFilterChange={handleFilterChange} />
       {clickedObjects.length > 1 && !selectedObject && (
         <InteractionContextMenu
           onClose={() => {

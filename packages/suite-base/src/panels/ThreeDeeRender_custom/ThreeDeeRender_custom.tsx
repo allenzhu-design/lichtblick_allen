@@ -665,6 +665,11 @@ export function ThreeDeeRender_custom(props: Readonly<ThreeDeeRenderProps>): Rea
     renderer?.publishClickTool.stop();
   }, [renderer]);
 
+  const onClickFilter = useCallback(() => {
+    // 切换筛选面板可见性
+    renderer?.selectionTool?.toggleFilterPanel();
+  }, [renderer]);
+
   const [publishActive, setPublishActive] = useState(false);
   useEffect(() => {
     if (renderer?.publishClickTool.publishClickType !== config.publish.type) {
@@ -827,6 +832,7 @@ export function ThreeDeeRender_custom(props: Readonly<ThreeDeeRenderProps>): Rea
             onClickMeasure={onClickMeasure}
             selectionActive={selectionActive}
             onClickSelection={onClickSelection}
+            onClickFilter={onClickFilter}
             canPublish={canPublish}
             publishActive={publishActive}
             onClickPublish={onClickPublish}

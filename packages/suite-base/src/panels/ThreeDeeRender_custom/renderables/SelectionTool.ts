@@ -16,10 +16,21 @@ import "./SelectionTool.css";
 type SelectionMode = "inactive" | "active";
 type SelectionState = "idle" | "dragging";
 
+/**
+ * 筛选参数接口
+ */
+export interface FilterValues {
+  speed: string;
+  height: string;
+  staticDynamic: string;
+}
+
 interface SelectionToolEventMap extends THREE.Object3DEventMap {
   "foxglove.selection-start": object;
-  "foxglove.selection-end": { selectedObjects: PickedRenderable[] };
+  "foxglove.selection-end": { selectedObjects: PickedRenderable[]; filters?: FilterValues };
   "foxglove.selection-mode-changed": { mode: SelectionMode };
+  "foxglove.filter-changed": FilterValues;
+  "foxglove.filter-panel-toggled": { visible: boolean };
 }
 
 /**
@@ -67,6 +78,14 @@ export class SelectionTool extends SceneExtension<Renderable, SelectionToolEvent
   private startPoint = { x: 0, y: 0 };
   private endPoint = { x: 0, y: 0 };
   private isMouseDown = false;
+
+  // Filter 相关
+  private filterPanelVisible = false;
+  private filterValues: FilterValues = {
+    speed: "",
+    height: "",
+    staticDynamic: "",
+  };
 
   // SVG 相关元素
   private svgContainer: SVGSVGElement | null = null;
@@ -117,6 +136,42 @@ export class SelectionTool extends SceneExtension<Renderable, SelectionToolEvent
 
   public get state(): SelectionState {
     return this.selectionState;
+  }
+
+  /**
+   * 切换筛选面板可见性
+   */
+  public toggleFilterPanel(): void {
+    this.filterPanelVisible = !this.filterPanelVisible;
+    this.dispatchEvent({
+      type: "foxglove.filter-panel-toggled",
+      visible: this.filterPanelVisible,
+    });
+  }
+
+  /**
+   * 获取筛选面板可见状态
+   */
+  public getFilterPanelVisible(): boolean {
+    return this.filterPanelVisible;
+  }
+
+  /**
+   * 设置筛选值
+   */
+  public setFilterValues(filters: FilterValues): void {
+    this.filterValues = filters;
+    this.dispatchEvent({
+      type: "foxglove.filter-changed",
+      ...filters,
+    });
+  }
+
+  /**
+   * 获取筛选值
+   */
+  public getFilterValues(): FilterValues {
+    return { ...this.filterValues };
   }
 
   /**
@@ -360,10 +415,11 @@ export class SelectionTool extends SceneExtension<Renderable, SelectionToolEvent
       // 执行框选计算
       const selectedObjects = this.#performBoxSelection(this.startPoint, this.endPoint);
 
-      // 触发事件，传递选中的对象
+      // 触发事件，传递选中的对象和筛选值
       this.dispatchEvent({
         type: "foxglove.selection-end",
         selectedObjects,
+        filters: this.filterValues,
       });
     }
 
