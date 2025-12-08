@@ -38,6 +38,8 @@ import { customTypography } from "@lichtblick/theme";
 import selectPickerIcon from "./renderables/select-picker-icon.png";
 import { FilterPanel, FilterValues } from "./FilterPanel";
 import { InteractionContextMenu, Interactions, SelectionObject, TabType } from "./Interactions";
+import { SelectionPanel } from "./SelectionPanel";
+import { HighlightSystem } from "./HighlightSystem";
 import type { PickedRenderable } from "./Picker";
 import { Renderable } from "./Renderable";
 import { useRenderer, useRendererEvent } from "./RendererContext";
@@ -140,7 +142,14 @@ export function RendererOverlay(props: Props): React.JSX.Element {
   );
   const [interactionsTabType, setInteractionsTabType] = useState<TabType | undefined>(undefined);
   const [filterPanelVisible, setFilterPanelVisible] = useState(false);
+  const [selectedPoints, setSelectedPoints] = useState<
+    Array<{
+      renderable: Renderable;
+      indices: number[];
+    }>
+  >([]);
   const renderer = useRenderer();
+  const highlightSystemRef = useRef(new HighlightSystem());
 
   // Toggle object selection mode on/off in the renderer
   useEffect(() => {
@@ -165,6 +174,42 @@ export function RendererOverlay(props: Props): React.JSX.Element {
   );
   const onResetView = useCallback(() => {
     renderer?.resetView();
+  }, [renderer]);
+
+  // 监听SelectionTool的框选事件
+  useEffect(() => {
+    if (!renderer) return;
+
+    const selectionTool = renderer.selectionTool;
+    if (!selectionTool) return;
+
+    const handleSelectionEnd = () => {
+      const selectedPoints = selectionTool.getSelectedPoints();
+      setSelectedPoints(selectedPoints);
+
+      // 构建PickedRenderable数组用于高亮
+      const pickedRenderables: PickedRenderable[] = [];
+      for (const { renderable, indices } of selectedPoints) {
+        for (const index of indices) {
+          pickedRenderables.push({
+            renderable,
+            instanceIndex: index,
+          });
+        }
+      }
+
+      // 应用高亮
+      if (pickedRenderables.length > 0) {
+        highlightSystemRef.current.highlight(pickedRenderables, { r: 0, g: 1, b: 0 });
+        renderer.queueAnimationFrame();
+      }
+    };
+
+    selectionTool.addEventListener("foxglove.selection-end", handleSelectionEnd);
+
+    return () => {
+      selectionTool.removeEventListener("foxglove.selection-end", handleSelectionEnd);
+    };
   }, [renderer]);
 
   const handleFilterChange = useCallback((filters: FilterValues) => {
@@ -461,6 +506,20 @@ export function RendererOverlay(props: Props): React.JSX.Element {
         )}
       </div>
       <FilterPanel visible={filterPanelVisible} onFilterChange={handleFilterChange} />
+      {selectedPoints.length > 0 && (
+        <div
+          style={{
+            position: "absolute",
+            bottom: 10,
+            right: 10,
+            maxWidth: 600,
+            maxHeight: 400,
+            pointerEvents: "auto",
+          }}
+        >
+          <SelectionPanel selectedPoints={selectedPoints} />
+        </div>
+      )}
       {clickedObjects.length > 1 && !selectedObject && (
         <InteractionContextMenu
           onClose={() => {

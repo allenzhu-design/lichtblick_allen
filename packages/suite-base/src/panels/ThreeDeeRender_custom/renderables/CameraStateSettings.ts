@@ -55,6 +55,7 @@ export class CameraStateSettings extends SceneExtension implements ICameraHandle
 
   #controls: OrbitControls;
   #isUpdatingCameraState = false;
+  #isControlsEnabled = true;
   #canvas: HTMLCanvasElement;
 
   // This group is used to transform the cameras based on the Frame follow mode
@@ -473,6 +474,15 @@ export class CameraStateSettings extends SceneExtension implements ICameraHandle
     return this.renderer.config.cameraState.perspective
       ? this.#perspectiveCamera
       : this.#orthographicCamera;
+  }
+
+  /**
+   * 启用或禁用轨道控制（用于框选等交互时临时禁用相机控制）
+   * Enable or disable orbit controls for tools that need exclusive mouse handling
+   */
+  public setControlsEnabled(enabled: boolean): void {
+    this.#isControlsEnabled = enabled;
+    this.#controls.enabled = enabled;
   }
 
   public handleResize(width: number, height: number, _pixelRatio: number): void {

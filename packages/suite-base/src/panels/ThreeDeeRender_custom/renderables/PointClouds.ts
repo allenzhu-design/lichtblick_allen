@@ -335,6 +335,11 @@ export class PointCloudHistoryRenderable extends Renderable<PointCloudHistoryUse
   }
 
   public startFrame(currentTime: bigint, renderFrameId: string, fixedFrameId: string): void {
+    // 如果选择工具正在进行拖拽，冻结点云位置更新
+    if (this.renderer.selectionTool?.isSelectionDragging) {
+      return;
+    }
+
     this.#pointsHistory.updateHistoryFromCurrentTime(currentTime);
     this.#pointsHistory.updatePoses(currentTime, renderFrameId, fixedFrameId);
     if (this.userData.settings.stixelsEnabled) {

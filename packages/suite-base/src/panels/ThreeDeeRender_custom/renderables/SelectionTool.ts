@@ -64,11 +64,6 @@ const SELECTION_RECT_CONFIG = {
  *
  * 再次点击 UI 可切换回 inactive 状态
  *
- * 相比 ShaderMaterial 方案的优势：
- * - 更简洁可靠，无需复杂的着色器
- * - 性能更好，不占用 GPU 资源
- * - 易于维护和扩展样式
- * - 与 SuperSplat 实现保持一致
  */
 export class SelectionTool extends SceneExtension<Renderable, SelectionToolEventMap> {
   public static extensionId = "foxglove.SelectionTool";
@@ -91,6 +86,16 @@ export class SelectionTool extends SceneExtension<Renderable, SelectionToolEvent
   private svgContainer: SVGSVGElement | null = null;
   private rectElement: SVGRectElement | null = null;
   private canvasElement: HTMLCanvasElement | null = null;
+
+  // 框选过程中是否冻结场景
+  private isSelectionInProgress = false;
+
+  // 缓存frame信息以确保框选时的坐标一致性
+  private cachedCamera: THREE.Camera | null = null;
+  private cachedCanvasSize: { width: number; height: number } | null = null;
+
+  // 选中的点的索引和对应的renderable
+  private selectedPointIndices: Map<Renderable, Set<number>> = new Map();
 
   public constructor(renderer: IRenderer, name: string = SelectionTool.extensionId) {
     super(name, renderer);
@@ -119,8 +124,6 @@ export class SelectionTool extends SceneExtension<Renderable, SelectionToolEvent
    * - 点击 UI 按钮时调用此方法
    * - 自动切换高亮状态和事件监听
    *
-   * 参考 SuperSplat 的 ToolManager.activate() 行为：
-   * re-activating the currently active tool deactivates it
    */
   public toggleMode(): void {
     if (this.selectionMode === "inactive") {
@@ -136,6 +139,28 @@ export class SelectionTool extends SceneExtension<Renderable, SelectionToolEvent
 
   public get state(): SelectionState {
     return this.selectionState;
+  }
+
+  public get isSelectionDragging(): boolean {
+    return this.isSelectionInProgress;
+  }
+
+  /**
+   * 获取选中的点的信息
+   */
+  public getSelectedPoints(): Array<{ renderable: Renderable; indices: number[] }> {
+    const result: Array<{ renderable: Renderable; indices: number[] }> = [];
+    for (const [renderable, indices] of this.selectedPointIndices.entries()) {
+      result.push({ renderable, indices: Array.from(indices) });
+    }
+    return result;
+  }
+
+  /**
+   * 清空选择
+   */
+  public clearSelection(): void {
+    this.selectedPointIndices.clear();
   }
 
   /**
@@ -359,18 +384,33 @@ export class SelectionTool extends SceneExtension<Renderable, SelectionToolEvent
       return;
     }
 
+    // 禁用相机控制，防止框选时相机移动
+    const cameraHandler = this.renderer.cameraHandler;
+    if (cameraHandler && "setControlsEnabled" in cameraHandler) {
+      (cameraHandler as any).setControlsEnabled(false);
+    }
+
+    // 缓存frame的相机和画布尺寸，用于框选计算
+    this.cachedCamera = this.renderer.cameraHandler.getActiveCamera().clone();
+    // 注意：canvasSize是THREE.Vector2，有x和y属性而不是width和height
+    this.cachedCanvasSize = { width: this.renderer.input.canvasSize.x, height: this.renderer.input.canvasSize.y };
+    console.log(`[#handleMouseDown] 缓存的 canvasSize: ${this.cachedCanvasSize.width}x${this.cachedCanvasSize.height}`);
+
     this.startPoint.x = cursorCoords.x;
     this.startPoint.y = cursorCoords.y;
     this.endPoint.x = cursorCoords.x;
     this.endPoint.y = cursorCoords.y;
     this.isMouseDown = true;
     this.selectionState = "dragging";
+    this.isSelectionInProgress = true;
 
     // 显示并更新矩形
     this.#showSelectionRect();
     this.#updateSelectionRect();
 
+    // 触发框选开始事件
     this.dispatchEvent({ type: "foxglove.selection-start" });
+
     this.renderer.queueAnimationFrame();
   };
 
@@ -405,15 +445,46 @@ export class SelectionTool extends SceneExtension<Renderable, SelectionToolEvent
     this.endPoint.y = cursorCoords.y;
     this.isMouseDown = false;
     this.selectionState = "idle";
+    this.isSelectionInProgress = false;
+
+    // 重新启用相机控制
+    const cameraHandler = this.renderer.cameraHandler;
+    if (cameraHandler && "setControlsEnabled" in cameraHandler) {
+      (cameraHandler as any).setControlsEnabled(true);
+    }
 
     // 计算矩形尺寸
     const width = Math.abs(this.endPoint.x - this.startPoint.x);
     const height = Math.abs(this.endPoint.y - this.startPoint.y);
+    const minX = Math.min(this.startPoint.x, this.endPoint.x);
+    const maxX = Math.max(this.startPoint.x, this.endPoint.x);
+    const minY = Math.min(this.startPoint.y, this.endPoint.y);
+    const maxY = Math.max(this.startPoint.y, this.endPoint.y);
 
     // 最小选择区域阈值 (5 像素)
+    const boxRect = `[${minX.toFixed(0)},${minY.toFixed(0)}]-[${maxX.toFixed(0)},${maxY.toFixed(0)}]`;
+    console.log(`[SelectionTool] 框选完成: 宽${width}px, 高${height}px, 范围${boxRect}`);
+
     if (width > 5 && height > 5) {
+      console.log(`[SelectionTool] 开始执行框选计算...`);
       // 执行框选计算
       const selectedObjects = this.#performBoxSelection(this.startPoint, this.endPoint);
+      console.log(`[SelectionTool] 框选完成，找到 ${selectedObjects.length} 个对象`);
+
+      // 将选中的对象按renderable分组
+      this.selectedPointIndices.clear();
+      for (const picked of selectedObjects) {
+        const renderable = picked.renderable;
+        const index = picked.instanceIndex; // 就是该点在其所属点云几何体（BufferAttribute）中的顺序索引。
+        if (index !== undefined) {
+          if (!this.selectedPointIndices.has(renderable)) {
+            this.selectedPointIndices.set(renderable, new Set());
+          }
+          this.selectedPointIndices.get(renderable)!.add(index);
+        }
+      }
+
+      console.log(`[SelectionTool] 总共选中 ${this.selectedPointIndices.size} 个 renderable, ${Array.from(this.selectedPointIndices.values()).reduce((sum, s) => sum + s.size, 0)} 个点`);
 
       // 触发事件，传递选中的对象和筛选值
       this.dispatchEvent({
@@ -423,18 +494,25 @@ export class SelectionTool extends SceneExtension<Renderable, SelectionToolEvent
       });
     }
 
-    // 立即隐藏矩形（无延迟）
     // 关键：不改变 selectionMode，保持 active 状态
     // 用户可以继续框选，无需再次点击 UI 按钮
     this.#hideSelectionRect();
+
+    // 清除缓存的相机和画布尺寸
+    this.cachedCamera = null;
+    this.cachedCanvasSize = null;
 
     this.renderer.queueAnimationFrame();
   };
 
   #performBoxSelection(start: { x: number; y: number }, end: { x: number; y: number }): PickedRenderable[] {
     const selected: PickedRenderable[] = [];
-    const camera = this.renderer.cameraHandler.getActiveCamera();
-    const canvasSize = this.renderer.input.canvasSize;
+
+    // 使用缓存的相机和画布尺寸，确保框选计算的一致性
+    const camera = this.cachedCamera ?? this.renderer.cameraHandler.getActiveCamera();
+    const cachedSize = this.cachedCanvasSize ?? { width: this.renderer.input.canvasSize.x, height: this.renderer.input.canvasSize.y };
+
+    console.log(`[#performBoxSelection] 检查缓存值: cachedCanvasSize=${this.cachedCanvasSize ? 'exists' : 'null'}, canvasSize=${cachedSize.width}x${cachedSize.height}`);
 
     // 计算矩形的边界（确保 start 和 end 构成有效的矩形）
     const minX = Math.min(start.x, end.x);
@@ -442,64 +520,146 @@ export class SelectionTool extends SceneExtension<Renderable, SelectionToolEvent
     const minY = Math.min(start.y, end.y);
     const maxY = Math.max(start.y, end.y);
 
-    // 遍历场景中的所有对象，寻找可拾取的对象
-    this.traverse((object) => {
+    console.log(`[#performBoxSelection] 开始遍历，画布尺寸=${cachedSize.width}x${cachedSize.height}, 扩展数=${this.renderer.sceneExtensions.size}`);
+
+    // 遍历所有 sceneExtensions，找到可拾取的对象
+    for (const sceneExtension of this.renderer.sceneExtensions.values()) {
+      console.log(`[#performBoxSelection] 遍历扩展: ${sceneExtension.name}`);
+      let objectCount = 0;
+      let pickableCount = 0;
+      sceneExtension.traverse((object: THREE.Object3D) => {
       const renderable = object as Partial<Renderable>;
+      objectCount++;
 
       // 只检查可拾取且可见的对象
-      if (!renderable.pickable || !renderable.visible) {
+      if (!renderable.pickable || !renderable.visible || !(object instanceof THREE.Object3D)) {
         return;
       }
 
-      // 获取对象的包围盒（世界坐标）
-      const bbox = new THREE.Box3();
-      if (renderable instanceof THREE.Object3D) {
-        bbox.setFromObject(renderable);
+      pickableCount++;
+      console.log(`[#performBoxSelection] ${sceneExtension.name} 中找到可拾取对象: ${object.name}, pickable=${renderable.pickable}, visible=${renderable.visible}, isPoints=${object instanceof THREE.Points}`);
+
+      const obj3d = object as THREE.Object3D;
+
+      // 特殊处理点云/点群：遍历几何体中的每个点
+      if (obj3d instanceof THREE.Points && obj3d.geometry && obj3d.geometry.attributes.position) {
+        const positionAttribute = obj3d.geometry.attributes.position as THREE.BufferAttribute;
+        const matrixWorld = obj3d.matrixWorld;
+        console.log(`[#performBoxSelection] 找到 THREE.Points: ${obj3d.name}, 点数=${positionAttribute.count}`);
+
+        let pointsInBox = 0;
+        // 遍历每个顶点（点）
+        for (let i = 0; i < positionAttribute.count; i++) {
+          // 获取点的本地坐标
+          const x = positionAttribute.getX(i);
+          const y = positionAttribute.getY(i);
+          const z = positionAttribute.getZ(i);
+
+          // 转换为世界坐标
+          const worldPos = new THREE.Vector3(x, y, z).applyMatrix4(matrixWorld);
+
+          // 投影到屏幕坐标
+          const screenPos = worldPos.clone().project(camera);
+          const screenX = (screenPos.x * 0.5 + 0.5) * cachedSize.width;
+          const screenY = (-screenPos.y * 0.5 + 0.5) * cachedSize.height; // Y 轴翻转
+
+          // 检查点是否在选择矩形内
+          if (screenX >= minX && screenX <= maxX && screenY >= minY && screenY <= maxY) {
+            pointsInBox++;
+            selected.push({
+              renderable: renderable as Renderable,
+              instanceIndex: i, // 存储点的索引
+            });
+          }
+        }
+        console.log(`[#performBoxSelection] 此 Points 对象中有 ${pointsInBox} 个点在框选范围内`);
       } else {
-        // 如果没有几何体，使用对象的位置
-        bbox.setFromCenterAndSize(
-          renderable.position || new THREE.Vector3(),
-          new THREE.Vector3(0.1, 0.1, 0.1)
-        );
-      }
+        // 非点云对象：首先检查其子对象中是否有 THREE.Points
+        let foundPointsInChildren = false;
+        obj3d.traverse((child: THREE.Object3D) => {
+          if (child === obj3d) return; // 跳过自身
 
-      // 检查包围盒的 8 个角点是否在屏幕矩形内
-      const corners = [
-        new THREE.Vector3(bbox.min.x, bbox.min.y, bbox.min.z),
-        new THREE.Vector3(bbox.min.x, bbox.min.y, bbox.max.z),
-        new THREE.Vector3(bbox.min.x, bbox.max.y, bbox.min.z),
-        new THREE.Vector3(bbox.min.x, bbox.max.y, bbox.max.z),
-        new THREE.Vector3(bbox.max.x, bbox.min.y, bbox.min.z),
-        new THREE.Vector3(bbox.max.x, bbox.min.y, bbox.max.z),
-        new THREE.Vector3(bbox.max.x, bbox.max.y, bbox.min.z),
-        new THREE.Vector3(bbox.max.x, bbox.max.y, bbox.max.z),
-      ];
+          if (child instanceof THREE.Points && child.geometry && child.geometry.attributes.position) {
+            foundPointsInChildren = true;
+            const positionAttribute = child.geometry.attributes.position as THREE.BufferAttribute;
+            const matrixWorld = child.matrixWorld;
+            console.log(`[#performBoxSelection] 在 ${object.name} 的子对象中找到 THREE.Points: ${child.name}, 点数=${positionAttribute.count}`);
 
-      let anyCornerInside = false;
-      for (const corner of corners) {
-        // 将世界坐标转换为屏幕坐标
-        const screenPos = corner.clone().project(camera);
+            let pointsInBox = 0;
+            // 遍历每个顶点（点）
+            for (let i = 0; i < positionAttribute.count; i++) {
+              // 获取点的本地坐标
+              const x = positionAttribute.getX(i);
+              const y = positionAttribute.getY(i);
+              const z = positionAttribute.getZ(i);
 
-        // 将 NDC 坐标转换回屏幕像素坐标
-        const screenX = (screenPos.x * 0.5 + 0.5) * canvasSize.width;
-        const screenY = (-screenPos.y * 0.5 + 0.5) * canvasSize.height; // Y 轴翻转
+              // 转换为世界坐标
+              const worldPos = new THREE.Vector3(x, y, z).applyMatrix4(matrixWorld);
 
-        // 检查点是否在选择矩形内
-        if (screenX >= minX && screenX <= maxX && screenY >= minY && screenY <= maxY) {
-          anyCornerInside = true;
-          break;
+              // 投影到屏幕坐标
+              const screenPos = worldPos.clone().project(camera);
+              const screenX = (screenPos.x * 0.5 + 0.5) * cachedSize.width;
+              const screenY = (-screenPos.y * 0.5 + 0.5) * cachedSize.height; // Y 轴翻转
+
+              // 检查点是否在选择矩形内
+              if (screenX >= minX && screenX <= maxX && screenY >= minY && screenY <= maxY) {
+                pointsInBox++;
+                selected.push({
+                  renderable: renderable as Renderable,
+                  instanceIndex: i, // 存储点的索引
+                });
+              }
+            }
+            console.log(`[#performBoxSelection] 在 ${object.name} 中找到 ${pointsInBox} 个点在框选范围内`);
+          }
+        });
+
+        // 如果没有在子对象中找到点，则检查包围盒的 8 个角点是否在屏幕矩形内
+        if (!foundPointsInChildren) {
+          const bbox = new THREE.Box3();
+          bbox.setFromObject(obj3d);
+
+          const corners = [
+            new THREE.Vector3(bbox.min.x, bbox.min.y, bbox.min.z),
+            new THREE.Vector3(bbox.min.x, bbox.min.y, bbox.max.z),
+            new THREE.Vector3(bbox.min.x, bbox.max.y, bbox.min.z),
+            new THREE.Vector3(bbox.min.x, bbox.max.y, bbox.max.z),
+            new THREE.Vector3(bbox.max.x, bbox.min.y, bbox.min.z),
+            new THREE.Vector3(bbox.max.x, bbox.min.y, bbox.max.z),
+            new THREE.Vector3(bbox.max.x, bbox.max.y, bbox.min.z),
+            new THREE.Vector3(bbox.max.x, bbox.max.y, bbox.max.z),
+          ];
+
+          let anyCornerInside = false;
+          for (const corner of corners) {
+            // 将世界坐标转换为屏幕坐标
+            const screenPos = corner.clone().project(camera);
+
+            // 将 NDC 坐标转换回屏幕像素坐标
+            const screenX = (screenPos.x * 0.5 + 0.5) * cachedSize.width;
+            const screenY = (-screenPos.y * 0.5 + 0.5) * cachedSize.height; // Y 轴翻转
+
+            // 检查点是否在选择矩形内
+            if (screenX >= minX && screenX <= maxX && screenY >= minY && screenY <= maxY) {
+              anyCornerInside = true;
+              break;
+            }
+          }
+
+          // 如果至少有一个角点在矩形内，则选择该对象
+          if (anyCornerInside && renderable instanceof Renderable) {
+            selected.push({
+              renderable: renderable as Renderable,
+              instanceIndex: undefined, // 暂时不支持实例选择
+            });
+          }
         }
       }
+      });
+      console.log(`[#performBoxSelection] ${sceneExtension.name} 完成: 总对象数=${objectCount}, 可拾取对象数=${pickableCount}`);
+    }
 
-      // 如果至少有一个角点在矩形内，则选择该对象
-      if (anyCornerInside && renderable instanceof Renderable) {
-        selected.push({
-          renderable: renderable as Renderable,
-          instanceIndex: undefined, // 暂时不支持实例选择
-        });
-      }
-    });
-
+    console.log(`[#performBoxSelection] 最终找到 ${selected.length} 个对象`);
     return selected;
   }
 }
