@@ -36,7 +36,7 @@ import { HUD } from "@lichtblick/suite-base/panels/ThreeDeeRender_custom/HUD";
 import { customTypography } from "@lichtblick/theme";
 
 import selectPickerIcon from "./renderables/select-picker-icon.png";
-import { FilterPanel, FilterValues } from "./FilterPanel";
+import { FilterPanel, FilterValues, DEFAULT_FILTER_VALUES } from "./FilterPanel";
 import { InteractionContextMenu, Interactions, SelectionObject, TabType } from "./Interactions";
 import { SelectionPanel } from "./SelectionPanel";
 import { HighlightSystem } from "./HighlightSystem";
@@ -142,6 +142,7 @@ export function RendererOverlay(props: Props): React.JSX.Element {
   );
   const [interactionsTabType, setInteractionsTabType] = useState<TabType | undefined>(undefined);
   const [filterPanelVisible, setFilterPanelVisible] = useState(false);
+  const [filterValues, setFilterValues] = useState<FilterValues>(DEFAULT_FILTER_VALUES);
   const [selectedPoints, setSelectedPoints] = useState<
     Array<{
       renderable: Renderable;
@@ -212,8 +213,8 @@ export function RendererOverlay(props: Props): React.JSX.Element {
     };
   }, [renderer]);
 
+  // 确保 handleFilterChange 函数接收 FilterValues 类型
   const handleFilterChange = useCallback((filters: FilterValues) => {
-    // Store filter values when they change - can be used for backend operations
     console.log("Filter values changed:", filters);
   }, []);
 
@@ -505,7 +506,14 @@ export function RendererOverlay(props: Props): React.JSX.Element {
           </Paper>
         )}
       </div>
-      <FilterPanel visible={filterPanelVisible} onFilterChange={handleFilterChange} />
+      <FilterPanel
+        visible={filterPanelVisible}
+        filterValues={filterValues}
+        onFilterChange={(newFilters) => {
+          setFilterValues(newFilters);
+          handleFilterChange(newFilters);
+        }}
+      />
       {selectedPoints.length > 0 && (
         <div
           style={{
