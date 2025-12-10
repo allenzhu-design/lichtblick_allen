@@ -48,9 +48,13 @@ import {
 import type { LayerSettingsTransform } from "./renderables/FrameAxes";
 import { PublishClickEventMap } from "./renderables/PublishClickTool";
 import { DEFAULT_PUBLISH_SETTINGS } from "./renderables/PublishSettings";
+import { FILTER_PARAMS_TOPICS, FILTER_DATATYPES } from "./ros";
 import { Shared3DPanelState, ThreeDeeRenderProps } from "./types";
 
 const log = Logger.getLogger(__filename);
+
+// 过滤参数发布的默认topic名称
+// const FILTER_PARAMS_TOPICS = "/filter_params";
 
 /**
  * A panel that renders a 3D scene. This is a thin wrapper around a `Renderer` instance.
@@ -659,7 +663,7 @@ export function ThreeDeeRender_custom(props: Readonly<ThreeDeeRenderProps>): Rea
     // 调用 toggleMode() 来切换激活/停用状态
     // 参考 SuperSplat 的工具管理器：重新点击激活的工具会停用它
     renderer?.selectionTool?.toggleMode();
-    
+
     // 停用其他工具
     renderer?.measurementTool.stopMeasuring();
     renderer?.publishClickTool.stop();
@@ -669,6 +673,37 @@ export function ThreeDeeRender_custom(props: Readonly<ThreeDeeRenderProps>): Rea
     // 切换筛选面板可见性
     renderer?.selectionTool?.toggleFilterPanel();
   }, [renderer]);
+
+const onPublishFilterParams = useCallback(
+  (topic: string, message: unknown) => {
+    // 检查是否支持ROS发布
+    const isRosDataSource =
+      context.dataSourceProfile === "ros1" || context.dataSourceProfile === "ros2";
+
+    if (!isRosDataSource) {
+      console.warn(
+        `Filter publishing not supported for data source: ${context.dataSourceProfile}`,
+      );
+      return;
+    }
+
+    if (!context.publish) {
+      console.warn(
+        `Publish function not available for data source: ${context.dataSourceProfile}. ` +
+        `Make sure ROS connection is established.`,
+      );
+      return;
+    }
+
+    try {
+      context.publish(topic, message);
+      console.log(`✓ Filter params published to topic: ${topic}`);
+    } catch (error) {
+      console.error(`✗ Failed to publish filter params to ${topic}:`, error);
+    }
+  },
+  [context],
+);
 
   const [publishActive, setPublishActive] = useState(false);
   useEffect(() => {
@@ -684,6 +719,7 @@ export function ThreeDeeRender_custom(props: Readonly<ThreeDeeRenderProps>): Rea
       goal: config.publish.poseTopic,
       point: config.publish.pointTopic,
       pose: config.publish.poseEstimateTopic,
+      filterParams: FILTER_PARAMS_TOPICS.FILTER_PARAMS,
     };
   }, [config.publish.poseTopic, config.publish.pointTopic, config.publish.poseEstimateTopic]);
 
@@ -696,10 +732,19 @@ export function ThreeDeeRender_custom(props: Readonly<ThreeDeeRenderProps>): Rea
       datatypes,
     });
 
+    // 为过滤参数添加自定义消息类型支持
+    const filterDatatypes = new Map(datatypes);
+    FILTER_DATATYPES.forEach((dataType) => {
+      // 这里注意：如果需要完整的messageDefinition，应该从ros.ts或其他地方获取
+      // 目前我们只需要确保topic被registered，具体的message定义由ROS系统提供
+    });
+    context.advertise?.(publishTopics.filterParams, "filter_msgs/FilterParamsInfo", { datatypes: filterDatatypes });
+
     return () => {
       context.unadvertise?.(publishTopics.goal);
       context.unadvertise?.(publishTopics.point);
       context.unadvertise?.(publishTopics.pose);
+      context.unadvertise?.(publishTopics.filterParams);
     };
   }, [publishTopics, context, context.dataSourceProfile]);
 
@@ -843,6 +888,10 @@ export function ThreeDeeRender_custom(props: Readonly<ThreeDeeRenderProps>): Rea
               renderer?.publishClickTool.start();
             }}
             timezone={timezone}
+            // 过滤功能相关props
+            onPublishFilterParams={onPublishFilterParams}
+            filterParamsTopic={FILTER_PARAMS_TOPICS.FILTER_PARAMS}
+            frameId={renderer?.fixedFrameId || "map"}
           />
         </RendererContext.Provider>
       </div>

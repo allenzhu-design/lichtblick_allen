@@ -289,7 +289,25 @@ export type JointState = {
   effort: number[];
 };
 
+// 添加新的消息类型
+export type FilterParamsInfo = {
+  header: Header;
+  static_dynamic: string;
+  speed_min: number;
+  speed_max: number;
+  height_min: number;
+  height_max: number;
+  // timestamp?: string;
+};
+
+export const FILTER_PARAMS_TOPICS = {
+  FILTER_PARAMS: "/filter/params"
+} as const;
+
 export const TIME_ZERO = { sec: 0, nsec: 0 };
+
+export const FILTER_DATATYPES = new Set<string>();
+addRosDataType(FILTER_DATATYPES, "filter_msgs/FilterParamsInfo");
 
 export const TRANSFORM_STAMPED_DATATYPES = new Set<string>();
 addRosDataType(TRANSFORM_STAMPED_DATATYPES, "geometry_msgs/TransformStamped");

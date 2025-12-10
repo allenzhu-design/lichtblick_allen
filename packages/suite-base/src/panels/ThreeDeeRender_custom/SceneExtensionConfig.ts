@@ -27,8 +27,8 @@ import { VelodyneScans } from "@lichtblick/suite-base/panels/ThreeDeeRender_cust
 import { IRenderer } from "./IRenderer";
 import { SceneExtension } from "./SceneExtension";
 import { MeasurementTool } from "./renderables/MeasurementTool";
-import { SelectionTool } from "./renderables/SelectionTool";
 import { PublishClickTool } from "./renderables/PublishClickTool";
+import { SelectionTool } from "./renderables/SelectionTool";
 import { InterfaceMode } from "./types";
 
 export type SceneExtensionConfig = {

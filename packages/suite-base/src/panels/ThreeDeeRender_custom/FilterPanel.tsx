@@ -5,6 +5,7 @@
 // License, v2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/
 
+import ClearIcon from "@mui/icons-material/Clear";
 import {
   Box,
   Paper,
@@ -20,7 +21,6 @@ import {
   IconButton,
   Button,
 } from "@mui/material";
-import ClearIcon from "@mui/icons-material/Clear";
 import { useCallback, useState, useEffect } from "react";
 import { makeStyles } from "tss-react/mui";
 
@@ -39,7 +39,7 @@ export interface FilterValues {
   speed: RangeValue;
   height: RangeValue;
   staticDynamic: string;
-  timestamp?: string;
+  // timestamp?: string;
 }
 
 /**
@@ -232,13 +232,13 @@ export function FilterPanel(props: FilterPanelProps): React.JSX.Element | null {
     const errors: { speed?: string; height?: string; staticDynamic?: string } = {};
 
     const speedError = validateRange(values.speed.lower, values.speed.upper);
-    if (speedError) errors.speed = speedError;
+    if (speedError) {errors.speed = speedError;}
 
     const heightError = validateRange(values.height.lower, values.height.upper);
-    if (heightError) errors.height = heightError;
+    if (heightError) {errors.height = heightError;}
 
     const staticDynamicError = validateStaticDynamic(values.staticDynamic);
-    if (staticDynamicError) errors.staticDynamic = staticDynamicError;
+    if (staticDynamicError) {errors.staticDynamic = staticDynamicError;}
 
     return errors;
   }, []);

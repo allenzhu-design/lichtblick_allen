@@ -2,17 +2,18 @@
 // SPDX-License-Identifier: MPL-2.0
 
 import * as THREE from "three";
-import type { Renderable } from "./Renderable";
+
 import type { PickedRenderable } from "./Picker";
+import type { Renderable } from "./Renderable";
 
 /**
  * 高亮系统 - 用于在点云中高亮显示选中的点
  */
 export class HighlightSystem {
-  private originalColors: Map<
+  private originalColors = new Map<
     Renderable,
     { attribute: THREE.BufferAttribute; colors: Float32Array }
-  > = new Map();
+  >();
 
   /**
    * 对指定的点进行高亮处理

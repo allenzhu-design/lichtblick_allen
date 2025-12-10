@@ -30,14 +30,14 @@ type PanelDefinition = {
 };
 
 // Lazy load panels dynamically
-const DefaultThreeDeeRenderPanel = lazy(() => import('@lichtblick/suite-base/panels/ThreeDeeRender'));
-const DefaultImagePanel = lazy(() =>
-  import('@lichtblick/suite-base/panels/ThreeDeeRender').then(m => ({ default: m.ImagePanel }))
+const DefaultThreeDeeRenderPanel = lazy(async () => await import('@lichtblick/suite-base/panels/ThreeDeeRender'));
+const DefaultImagePanel = lazy(async () =>
+  await import('@lichtblick/suite-base/panels/ThreeDeeRender').then(m => ({ default: m.ImagePanel }))
 );
 
-const CustomThreeDeeRenderPanel = lazy(() => import('@lichtblick/suite-base/panels/ThreeDeeRender_custom'));
-const CustomImagePanel = lazy(() =>
-  import('@lichtblick/suite-base/panels/ThreeDeeRender_custom').then(m => ({ default: m.ImagePanel }))
+const CustomThreeDeeRenderPanel = lazy(async () => await import('@lichtblick/suite-base/panels/ThreeDeeRender_custom'));
+const CustomImagePanel = lazy(async () =>
+  await import('@lichtblick/suite-base/panels/ThreeDeeRender_custom').then(m => ({ default: m.ImagePanel }))
 );
 
 export interface PanelRegistry {

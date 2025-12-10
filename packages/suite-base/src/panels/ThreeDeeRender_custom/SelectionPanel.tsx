@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (C) 2023-2025 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
 // SPDX-License-Identifier: MPL-2.0
 
+import { KeyboardArrowDown, KeyboardArrowRight, Close, ExpandMore, ExpandLess } from "@mui/icons-material";
 import {
   Paper,
   Table,
@@ -15,13 +16,13 @@ import {
   IconButton,
   Tooltip,
 } from "@mui/material";
-import { KeyboardArrowDown, KeyboardArrowRight, Close, ExpandMore, ExpandLess } from "@mui/icons-material";
 import React, { useMemo, useState } from "react";
 import { makeStyles } from "tss-react/mui";
 
-import type { Renderable } from "./Renderable";
-import ObjectDetails from "./Interactions/ObjectDetails";
 import type { RosValue } from "@lichtblick/suite-base/players/types";
+
+import ObjectDetails from "./Interactions/ObjectDetails";
+import type { Renderable } from "./Renderable";
 
 const useStyles = makeStyles()((theme) => ({
   root: {
@@ -112,10 +113,7 @@ export const SelectionPanel = React.memo<SelectionPanelProps>(function Selection
       const topic = renderable.name ?? "Unknown";
       for (const pointIndex of indices) {
         // 获取点的详细属性
-        const properties = (renderable.instanceDetails?.(pointIndex) ?? {}) as Record<
-          string,
-          RosValue
-        >;
+        const properties = (renderable.instanceDetails?.(pointIndex) ?? {});
 
         points.push({
           id: `${topic}-${pointIndex}`,
@@ -147,7 +145,7 @@ export const SelectionPanel = React.memo<SelectionPanelProps>(function Selection
         <Tooltip title={`展开选中点表格 (${allPoints.length} 个点)`}>
           <IconButton
             size="small"
-            onClick={() => setPanelCollapsed(false)}
+            onClick={() => { setPanelCollapsed(false); }}
             sx={{ flex: 1, justifyContent: "flex-start" }}
           >
             <ExpandMore fontSize="small" />
@@ -172,7 +170,7 @@ export const SelectionPanel = React.memo<SelectionPanelProps>(function Selection
         </Typography>
         <Box className={classes.headerActions}>
           <Tooltip title="最小化面板">
-            <IconButton size="small" onClick={() => setPanelCollapsed(true)}>
+            <IconButton size="small" onClick={() => { setPanelCollapsed(true); }}>
               <ExpandLess fontSize="small" />
             </IconButton>
           </Tooltip>
@@ -196,7 +194,7 @@ export const SelectionPanel = React.memo<SelectionPanelProps>(function Selection
               <React.Fragment key={point.id}>
                 <TableRow
                   className={classes.expandRow}
-                  onClick={() => toggleExpand(point.id)}
+                  onClick={() => { toggleExpand(point.id); }}
                 >
                   <TableCell>
                     <IconButton

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: Copyright (C) 2023-2025 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
+// SPDX-License-Identifier: MPL-2.0
+
 // packages/suite-base/src/util/ThreeDeeVersion/version.ts
 /**
  * ThreeDee 渲染器版本管理器

@@ -74,8 +74,8 @@ import {
 import { CameraStateSettings } from "./renderables/CameraStateSettings";
 import { ImageMode } from "./renderables/ImageMode/ImageMode";
 import { MeasurementTool } from "./renderables/MeasurementTool";
-import { SelectionTool } from "./renderables/SelectionTool";
 import { PublishClickTool } from "./renderables/PublishClickTool";
+import { SelectionTool } from "./renderables/SelectionTool";
 import { MarkerPool } from "./renderables/markers/MarkerPool";
 import {
   Header,

@@ -95,13 +95,13 @@ export class SelectionTool extends SceneExtension<Renderable, SelectionToolEvent
   private cachedCanvasSize: { width: number; height: number } | null = null;
 
   // 选中的点的索引和对应的renderable
-  private selectedPointIndices: Map<Renderable, Set<number>> = new Map();
+  private selectedPointIndices = new Map<Renderable, Set<number>>();
 
   public constructor(renderer: IRenderer, name: string = SelectionTool.extensionId) {
     super(name, renderer);
 
     // 获取 Canvas 元素
-    this.canvasElement = renderer.gl.domElement as HTMLCanvasElement;
+    this.canvasElement = renderer.gl.domElement;
 
     // 初始化 SVG 容器
     this.#initSVGContainer();
@@ -539,10 +539,10 @@ export class SelectionTool extends SceneExtension<Renderable, SelectionToolEvent
       pickableCount++;
       console.log(`[#performBoxSelection] ${sceneExtension.name} 中找到可拾取对象: ${object.name}, pickable=${renderable.pickable}, visible=${renderable.visible}, isPoints=${object instanceof THREE.Points}`);
 
-      const obj3d = object as THREE.Object3D;
+      const obj3d = object;
 
       // 特殊处理点云/点群：遍历几何体中的每个点
-      if (obj3d instanceof THREE.Points && obj3d.geometry && obj3d.geometry.attributes.position) {
+      if (obj3d instanceof THREE.Points && obj3d.geometry?.attributes.position) {
         const positionAttribute = obj3d.geometry.attributes.position as THREE.BufferAttribute;
         const matrixWorld = obj3d.matrixWorld;
         console.log(`[#performBoxSelection] 找到 THREE.Points: ${obj3d.name}, 点数=${positionAttribute.count}`);
@@ -577,9 +577,9 @@ export class SelectionTool extends SceneExtension<Renderable, SelectionToolEvent
         // 非点云对象：首先检查其子对象中是否有 THREE.Points
         let foundPointsInChildren = false;
         obj3d.traverse((child: THREE.Object3D) => {
-          if (child === obj3d) return; // 跳过自身
+          if (child === obj3d) {return;} // 跳过自身
 
-          if (child instanceof THREE.Points && child.geometry && child.geometry.attributes.position) {
+          if (child instanceof THREE.Points && child.geometry?.attributes.position) {
             foundPointsInChildren = true;
             const positionAttribute = child.geometry.attributes.position as THREE.BufferAttribute;
             const matrixWorld = child.matrixWorld;

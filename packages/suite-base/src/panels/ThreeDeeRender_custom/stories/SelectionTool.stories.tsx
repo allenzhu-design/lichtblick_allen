@@ -115,7 +115,7 @@ export const SelectionTool: StoryObj = {
     }
 
     const canvas = document.querySelector("canvas");
-    if (!canvas) return;
+    if (!canvas) {return;}
 
     const canvasRect = canvas.getBoundingClientRect();
 
@@ -238,7 +238,7 @@ export const SelectionToolMultipleObjects: StoryObj = {
     }
 
     const canvas = document.querySelector("canvas");
-    if (!canvas) return;
+    if (!canvas) {return;}
 
     const canvasRect = canvas.getBoundingClientRect();
 

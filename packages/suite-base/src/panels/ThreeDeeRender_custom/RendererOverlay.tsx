@@ -35,17 +35,18 @@ import { usePanelMousePresence } from "@lichtblick/suite-base/hooks/usePanelMous
 import { HUD } from "@lichtblick/suite-base/panels/ThreeDeeRender_custom/HUD";
 import { customTypography } from "@lichtblick/theme";
 
-import selectPickerIcon from "./renderables/select-picker-icon.png";
 import { FilterPanel, FilterValues, DEFAULT_FILTER_VALUES } from "./FilterPanel";
-import { InteractionContextMenu, Interactions, SelectionObject, TabType } from "./Interactions";
-import { SelectionPanel } from "./SelectionPanel";
+import { makeFilterParamsMessage } from "./FilterPublishUtils";
 import { HighlightSystem } from "./HighlightSystem";
+import { InteractionContextMenu, Interactions, SelectionObject, TabType } from "./Interactions";
 import type { PickedRenderable } from "./Picker";
 import { Renderable } from "./Renderable";
 import { useRenderer, useRendererEvent } from "./RendererContext";
+import { SelectionPanel } from "./SelectionPanel";
 import { Stats } from "./Stats";
 import { MouseEventObject } from "./camera";
 import { PublishClickType } from "./renderables/PublishClickTool";
+import selectPickerIcon from "./renderables/select-picker-icon.png";
 import { InterfaceMode } from "./types";
 
 const PublishClickIcons: Record<PublishClickType, React.ReactNode> = {
@@ -124,6 +125,10 @@ type Props = {
   publishActive: boolean;
   publishClickType: PublishClickType;
   timezone: string | undefined;
+  // 过滤功能相关props
+  onPublishFilterParams?: (filterTopic: string, message: unknown) => void;
+  filterParamsTopic?: string;
+  frameId?: string;
 };
 
 /**
@@ -179,10 +184,10 @@ export function RendererOverlay(props: Props): React.JSX.Element {
 
   // 监听SelectionTool的框选事件
   useEffect(() => {
-    if (!renderer) return;
+    if (!renderer) {return;}
 
     const selectionTool = renderer.selectionTool;
-    if (!selectionTool) return;
+    if (!selectionTool) {return;}
 
     const handleSelectionEnd = () => {
       const selectedPoints = selectionTool.getSelectedPoints();
@@ -215,8 +220,23 @@ export function RendererOverlay(props: Props): React.JSX.Element {
 
   // 确保 handleFilterChange 函数接收 FilterValues 类型
   const handleFilterChange = useCallback((filters: FilterValues) => {
-    console.log("Filter values changed:", filters);
-  }, []);
+    console.log("Filter values applied:", filters);
+
+    // 如果提供了发布功能和过滤参数topic，则发布消息
+    if (props.onPublishFilterParams && props.filterParamsTopic) {
+      try {
+        const message = makeFilterParamsMessage(filters, props.frameId || "map");
+        props.onPublishFilterParams(props.filterParamsTopic, message);
+      } catch (error) {
+        console.error("Failed to construct and publish filter params:", error);
+      }
+    } else {
+      console.debug(
+        "Filter publishing not available:",
+        { hasPublishCallback: !!props.onPublishFilterParams, hasTopic: !!props.filterParamsTopic },
+      );
+    }
+  }, [props]);
 
   const handleClickFilter = useCallback(() => {
     setFilterPanelVisible((prev) => !prev);
@@ -388,7 +408,7 @@ export function RendererOverlay(props: Props): React.JSX.Element {
 
   const mousePresenceRef = useRef<HTMLDivElement>(ReactNull);
   const mousePresent = usePanelMousePresence(mousePresenceRef);
-  const isSelectionDisabled = props.perspective === true || props.interfaceMode !== "3d";
+  const isSelectionDisabled = props.perspective || props.interfaceMode !== "3d";
 
   return (
     <>

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: Copyright (C) 2023-2025 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)<lichtblick@bmwgroup.com>
+// SPDX-License-Identifier: MPL-2.0
+
 // packages/suite-base/src/util/ThreeDeeVersion/utils.ts
 /**
  * ThreeDee Panel 类型工具函数
@@ -28,9 +31,9 @@ export function panelTypeToVersionLabel(panelType: string): string {
  * 获取面板友好名称（用于 UI 显示）
  */
 export function getPanelDisplayName(panelType: string): string {
-  if (panelType === '3D') return '3D';
-  if (panelType === '3D_custom') return '3D (Custom)';
-  if (panelType === 'Image') return 'Image';
-  if (panelType === 'Image_custom') return 'Image (Custom)';
+  if (panelType === '3D') {return '3D';}
+  if (panelType === '3D_custom') {return '3D (Custom)';}
+  if (panelType === 'Image') {return 'Image';}
+  if (panelType === 'Image_custom') {return 'Image (Custom)';}
   return panelType;
 }
