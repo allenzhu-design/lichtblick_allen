@@ -19,6 +19,7 @@ import {
 } from "@lichtblick/suite-base/context/Workspace/WorkspaceContext";
 import { useWorkspaceActions } from "@lichtblick/suite-base/context/Workspace/useWorkspaceActions";
 import { useLayoutTransfer } from "@lichtblick/suite-base/hooks/useLayoutTransfer";
+import { useConfigurationTransfer } from '@lichtblick/suite-base/hooks/useConfigurationTransfer';
 import { formatKeyboardShortcut } from "@lichtblick/suite-base/util/formatKeyboardShortcut";
 
 import { NestedMenuItem } from "./NestedMenuItem";
@@ -50,6 +51,7 @@ export function AppMenu(props: AppMenuProps): React.JSX.Element {
   }, []);
 
   const { importLayout, exportLayout } = useLayoutTransfer();
+  const { importConfiguration, exportConfiguration } = useConfigurationTransfer();
   // FILE
 
   const fileItems = useMemo(() => {
@@ -160,8 +162,28 @@ export function AppMenu(props: AppMenuProps): React.JSX.Element {
           handleNestedMenuClose();
         },
       },
+      {
+        type: "item",
+        label: t("importConfigurationFromFile"),
+        key: "import-configuration",
+        onClick: async () => {
+          await importConfiguration();
+          handleNestedMenuClose();
+        },
+      },
+      {
+        type: "item",
+        label: t("exportConfigurationFromFile"),
+        key: "export-configuration",
+        onClick: async () => {
+          await exportConfiguration();
+          handleNestedMenuClose();
+        },
+      },
     ],
     [
+      importConfiguration,
+      exportConfiguration,
       exportLayout,
       handleNestedMenuClose,
       importLayout,
